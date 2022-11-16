@@ -27,8 +27,8 @@
 // if (out < 0) set ng = 1
 
 CHIP ALU {
-    IN  
-        x[16], y[16],  // 16-bit inputs        
+    IN
+        x[16], y[16],  // 16-bit inputs
         zx, // zero the x input?
         nx, // negate the x input?
         zy, // zero the y input?
@@ -36,11 +36,40 @@ CHIP ALU {
         f,  // compute out = x + y (if 1) or x & y (if 0)
         no; // negate the out output?
 
-    OUT 
+    OUT
         out[16], // 16-bit output
         zr, // 1 if (out == 0), 0 otherwise
         ng; // 1 if (out < 0),  0 otherwise
 
     PARTS:
-   // Put you code here:
-}
+
+    /* zx */
+    Mux16(a=x, b[0..15]=false, sel=zx, out=x0);
+
+    /* nx */
+    Not16(in=x0, out=notx0);
+    Mux16(a=x0, b=notx0, sel=nx, out=x1);
+
+    /* zy */
+    Mux16(a=y, b[0..15]=false, sel=zy, out=y0);
+
+    /* ny */
+    Not16(in=y0, out=noty0);
+    Mux16(a=y0, b=noty0, sel=ny, out=y1);
+
+    /* f */
+    Add16(a=x1, b=y1, out=sumxy);
+    And16(a=x1, b=y1, out=andxy);
+    Mux16(a=andxy, b=sumxy, sel=f, out=res);
+
+    /* no, ng*/
+    Not16(in=res, out=notres);
+    Mux16(a=res, b=notres, sel=no, out[0..7]=outa, out[8..15]=outb, out[15]=ng, out=out);
+
+    /* zr */
+    Or8Way(in=outa, out=oa);
+    Or8Way(in=outb, out=ob);
+    Or(a=oa, b=oa, out=oiszero);
+    Mux(a=true, b=false, sel=oiszero, out=zr);
+
+    }
