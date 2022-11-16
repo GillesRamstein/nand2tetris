@@ -1,0 +1,17 @@
+/* XOR Gate */
+
+CHIP Xor {
+
+    // interface
+    IN a, b;
+    OUT out;
+
+    // implementation
+    PARTS:
+    Not (in=a, out=notA);
+    Not (in=b, out=notB);
+    And (a=a, b=notB, out=AandnotB);
+    And (a=notA, b=b, out=notAandB);
+    Or  (a=AandnotB, b=notAandB, out=out);
+
+}
