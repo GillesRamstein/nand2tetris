@@ -25,6 +25,26 @@
  * than to the address resulting from executing the current instruction. 
  */
 
+
+/*
+
+Hack instructions have the 16-bit format 'ixxaccccccdddjjj'
+i=opcode
+
+i==0 -> A-instruction:
+    other 15 bits describe an address
+
+i==1 -> C-instruction   dst=func;jmp
+    x = 2 unused bits
+    a = select ALU input (a==0 -> A-Register, a==1 -> Memory)
+    c = determine ALU function
+    d = store ALU output to d1: A-Register, d2: D-Register, d3: Memory
+            000 do not store, 111 store everywhere
+    j = jump bits for branch control
+
+*/
+
+
 CHIP CPU {
 
     IN  inM[16],         // M value input  (M = contents of RAM[A])
@@ -39,5 +59,67 @@ CHIP CPU {
         pc[15];          // address of next instruction
 
     PARTS:
-    // Put your code here:
+
+    // Instruction Mux - select based on OpCode
+    Mux16(a=instruction, b=outALU, sel=instruction[15], out=muxInstruction);
+
+    // Address Register - Write if A-Instruction, or C-Instruction and RegA dst bit is set
+    Not(in=instruction[15], out=aInstruction);
+    Or(a=instruction[5], b=aInstruction, out=storeRegA);
+    ARegister(in=muxInstruction, load=storeRegA, out=registerA, out[0..14]=addressM);
+
+    // ALU input - select based in a-bit
+    Mux16(a=registerA, b=inM, sel=instruction[12], out=memoryOrRegisterA);
+
+    // Data Register - Write if C-Instruction and RegD dst bit is set
+    And(a=instruction[15], b=instruction[4], out=storeRegD);
+    DRegister(in=outALU, load=storeRegD, out=registerD);
+
+    // ALU - correctly route registers and compute bits
+    ALU(
+        x=registerD,
+        y=memoryOrRegisterA,
+        zx=instruction[11],
+        nx=instruction[10],
+        zy=instruction[9],
+        ny=instruction[8],
+        f =instruction[7],
+        no=instruction[6],
+        out=outALU,
+        out=outM,
+        zr=zero,
+        ng=neg
+    );
+
+    // Jump Logic
+    Not(in=neg, out=notneg);
+    Not(in=zero, out=nonzero);
+    And(a=notneg, b=nonzero, out=pos);
+    And(b=instruction[0], a=pos,  out=jmp1);
+    And(b=instruction[1], a=zero, out=jmp2);
+    And(b=instruction[2], a=neg,  out=jmp3);
+    Or(a=jmp1, b=jmp2, out=jmp4);
+    Or(a=jmp3, b=jmp4, out=jmpAll);
+    And(a=jmpAll, b=instruction[15], out=jmp);
+
+    // Program Counter - Argument priority: reset > load > inc
+    PC(in=registerA, reset=reset, load=jmp, inc=true, out[0..14]=pc);
+
+    // Write to Memory if C-Instruction and Memory dst bit is set
+    And(a=instruction[15], b=instruction[3], out=writeM);
 }
+
+/*
+Jump Logic - 4 tests are sufficient to cover all possibilities:
+1. (000) no jmp
+2. (001) jmp if out>0
+        (011) jmp if out>=0
+        (101) jmp if out!=0
+        (111) jmp
+3. (010) jmp if out==0
+        (111) jmp
+4. (100) jmp if out<0
+        (110) jmp if out<=0
+        (101) jmp if out!=0
+            (111) jmp
+*/
