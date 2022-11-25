@@ -9,18 +9,18 @@
    D=M              // D = first number
    @R1
    D=D-M            // D = first number - second number
-   @OUTPUT_FIRST
+   @OUTPUT_FIRST    // -> @10
    D;JGT            // if D>0 (first is greater) goto output_first
    @R1
    D=M              // D = second number
-   @OUTPUT_D
+   @OUTPUT_D        // -> @12
    0;JMP            // goto output_d
-(OUTPUT_FIRST)
+(OUTPUT_FIRST)      // 10
    @R0             
    D=M              // D = first number
-(OUTPUT_D)
+(OUTPUT_D)          // 12
    @R2
    M=D              // M[2] = D (greatest number)
-(INFINITE_LOOP)
-   @INFINITE_LOOP
+(INFINITE_LOOP)     // 14
+   @INFINITE_LOOP   // -> @14
    0;JMP            // infinite loop
