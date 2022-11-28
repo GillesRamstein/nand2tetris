@@ -1,0 +1,8 @@
+// Expected Values:
+// RAM[0] 257
+// RAM[256] 7
+// RAM[257] 3
+
+push constant 5     // 0000 0000 0000 0101
+push constant 3     // 0000 0000 0000 0011
+or                  // 0000 0000 0000 0111 -> 7

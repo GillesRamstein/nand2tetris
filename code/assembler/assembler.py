@@ -21,6 +21,7 @@ LAB = {}
 
 def assembler(asm_file: str, out_file: Optional[str] = None):
     asm = read_asm_file(asm_file)
+    breakpoint()
     clean_asm = first_parse(asm)
     hack = to_binary(clean_asm)
     write_output(hack, Path(out_file or asm_file).with_suffix(".hack"))

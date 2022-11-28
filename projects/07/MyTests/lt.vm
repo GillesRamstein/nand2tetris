@@ -1,0 +1,16 @@
+// Expected Values:
+// RAM[0] 259
+// RAM[256] 0
+// RAM[257] -1
+// RAM[258] 0
+// RAM[259] 7
+
+push constant 7
+push constant 7
+lt
+push constant 7
+push constant 8
+lt
+push constant 8
+push constant 7
+lt
