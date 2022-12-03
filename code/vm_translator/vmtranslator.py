@@ -4,43 +4,56 @@ nand2tetris vm_translator
 https://www.cs.huji.ac.il/course/2002/nand2tet/docs/ch_7_vm_I.pdf
 
 
-RAM Addresses:
-       0-15: Virtual Registers
-     16-255: Static Variables
-   256-2047: Stack
- 2048-16483: Heap
-16384-24575: Memory mapped I/O 
-
-Virtual Registers:
-    0: SP - Stack Pointer
-    1: LCL - Local Segment Base Pointer (Stack)
-    2: ARG - Argument Segment Base Pointer (Stack)
-    3: THIS - Object Fields Base Pointer (Heap)
-    4: THAT - Object Array Base Pointer (Heap)
- 5-12: TEMP - Hold the contents of the temp segment 
-13-15: Can be used by the VM implementation as general-purpose registers
-
-
-run with:
-
-python code/vm_translator/vmtranslator.py --vm projects/07/StackArithmetic/SimpleAdd/SimpleAdd.vm
+python ../vm_translator/vmtranslator.py <dir-/file-path> [--debug]
 
 """
 from argparse import ArgumentParser
-from typing import Union, List, Optional
+from typing import Union, List
 from pathlib import Path
 
-from arithmetics import vm_arithmetics
-from pushpop import vm_pushpop
+from writers.arithmetics import vm_arithmetics
+from writers.bootstrap import vm_bootstrap
+from writers.branching import vm_branching
+from writers.functions import vm_functions
+from writers.pushpop import vm_pushpop
 
 
-def vm_translator(vm_file: str, debug: bool = False, out_file: Optional[str] = None):
+def vm_translator(input: str, debug: bool):
+    """Read single or multiple files files, translate to asm,
+    and write a single file back to disk.
+    """
+
+    # add bootstrap code
+    asm = vm_bootstrap(debug)
+
+    # translate single file
+    if input.endswith(".vm"):
+        out_path = Path(input).with_suffix(".asm")
+        asm.extend(translate_vm_file(input, debug))
+    # translate and append all files in a directory
+    else:
+        out_path = Path(input, Path(input).name).with_suffix(".asm")
+        for vm_file in Path(input).glob("*.vm"):
+            asm.extend(translate_vm_file(vm_file, debug))
+
+    # add clean asm line numbers
+    asm_with_line_numbers = []
+    counter = 0
+    for line in asm:
+        if line and not (line.strip().startswith("//") or line.strip().startswith("(")): #)
+            if "//" in line:
+                instr, comment = line.split("//")
+                line = instr.ljust(18) + f"  // ({counter}) {comment}"
+            else:
+                line = line.ljust(18) + f"  // ({counter})"
+            counter += 1
+        asm_with_line_numbers.append(line)
+
+    write_output(asm_with_line_numbers, out_path)
+
+
+def translate_vm_file(vm_file: str, debug: bool = False) -> List[str]:
     asm = []
-
-    # set stack pointer to 256
-    if debug:
-        asm.append(f"\n// init stack pointer:")
-    asm.extend(["@256", "D=A", "@SP", "M=D"])
 
     # translate line by line
     for line in read_vm_file(vm_file):
@@ -52,17 +65,12 @@ def vm_translator(vm_file: str, debug: bool = False, out_file: Optional[str] = N
 
         if debug:
             asm.append(f"\n// {instr}")
-        asm.extend(vm_pushpop(instr))
         asm.extend(vm_arithmetics(instr))
+        asm.extend(vm_branching(instr))
+        asm.extend(vm_functions(instr, debug))
+        asm.extend(vm_pushpop(instr, debug))
 
-    # add endless loop
-    if debug:
-        asm.append(f"\n// add endless loop on program end:")
-    asm.extend(
-        [f"@{len([l for l in asm if l and not (l.strip().startswith('//') or l.strip().startswith('('))])}", "0;JMP"]  # )
-    )
-
-    write_output(asm, Path(out_file or vm_file).with_suffix(".asm"))
+    return asm
 
 
 def read_vm_file(path: Union[str, Path]) -> List[str]:
@@ -78,18 +86,13 @@ def write_output(asm: List[str], out_path: Union[str, Path]):
 
 
 if __name__ == "__main__":
+
     parser = ArgumentParser()
-    parser.add_argument("--vm", nargs="+", type=str, help="path(s) to vm file(s")
+    parser.add_argument("input", type=str, help="path to vm file or dir")
     parser.add_argument(
         "--debug",
         action="store_true",
         help="adds vm instruction as comments into the hack code",
     )
     args = parser.parse_args()
-    for vm_file in args.vm:
-        if vm_file.endswith(".vm"):
-            vm_translator(vm_file, args.debug)
-        else:
-            vm_dir = vm_file
-            for vm_file in Path(vm_dir).glob("*.vm"):
-                vm_translator(vm_file, args.debug)
+    vm_translator(args.input, args.debug)

@@ -12,11 +12,11 @@ from pathlib import Path
 from typing import Union, List, Optional
 
 
-from constants import SYM, CMP, DST, JMP
+from .constants import SYM, CMP, DST, JMP
 
 
-VAR = {}
-LAB = {}
+variables = {}
+labels = {}
 
 
 def assembler(asm_file: str, out_file: Optional[str] = None):
@@ -45,7 +45,7 @@ def first_parse(asm: List[str]) -> List[str]:
             continue
 
         if instruction.startswith("(") and instruction.endswith(")"):
-            LAB[instruction.strip("()")] = format(len(clean_asm), "b").zfill(16)
+            labels[instruction.strip("()")] = format(len(clean_asm), "b").zfill(16)
         else:
             clean_asm.append(instruction)
     return clean_asm
@@ -75,14 +75,14 @@ def decode_a_instruction(instr: str) -> str:
         return f"{SYM[instr]}"
 
     # @<label>
-    elif instr in LAB:
-        return f"{LAB[instr]}"
+    elif instr in labels:
+        return f"{labels[instr]}"
 
     # @<variable>
-    elif instr not in VAR:
+    elif instr not in variables:
         # VAR table if first occurence
-        VAR[instr] = format(16 + len(VAR), "b").zfill(16)
-    return VAR[instr]
+        variables[instr] = format(16 + len(variables), "b").zfill(16)
+    return variables[instr]
 
 
 def decode_c_instruction(instr: str) -> str:
