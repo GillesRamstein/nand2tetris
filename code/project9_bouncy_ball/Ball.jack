@@ -1,0 +1,200 @@
+class Ball {
+            /*
+
+       (0) ----------> (63)
+        |
+        |    _R_
+        |   R-C-R
+        |    ^R^
+        v
+        (22)
+
+        */
+
+
+    field int screen_X, screen_y;
+    field int x, y;
+    field int w, h;
+    field int x_max, y_max;
+    field int v_x, v_y;
+    field int g;
+
+    constructor Ball new() {
+        let screen_X = 64; // 64 chars per line
+        let screen_y = 23; // 23 lines
+        let x = 0;      // x pos of top-left corner
+        let y = 0;      // y pos of top-left corner
+        let w = 1;
+        let h = 1;
+        // let w = 5;
+        // let h = 3;
+        let x_max = screen_X - w;
+        let y_max = screen_y - h;
+        let v_x = 2;    // x velocity
+        let v_y = 1;    // y velocity
+        let g = 1;    // gravity
+        return this;
+    }
+
+    method void dispose() {
+        do Memory.deAlloc(this);
+        return;
+    }
+
+    method void draw() {
+        // do Output.moveCursor(y, x);
+        // do Output.printString(" ~@~ ");
+        // do Output.moveCursor(y+1, x);
+        // do Output.printString("~@@@~");
+        // do Output.moveCursor(y+2, x);
+        // do Output.printString(" ~@~ ");
+
+        do Output.moveCursor(y, x);
+        do Output.printString("@");
+
+        do Library.debug(0, 0, x);
+        do Library.debug(1, 0, y);
+        do Library.debug(2, 0, v_x);
+        do Library.debug(3, 0, v_y);
+
+        return;
+    }
+
+    method void clear() {
+        // do Output.moveCursor(y, x);
+        // do Output.printString("     ");
+        // do Output.moveCursor(y+1, x);
+        // do Output.printString("     ");
+        // do Output.moveCursor(y+2, x);
+        // do Output.printString("     ");
+        do Output.moveCursor(y, x);
+        do Output.printString(" ");
+
+        return;
+    }
+
+    method void getInput(int key) {
+        // left
+        if (key = 130) {
+            let v_x = v_x - 4;
+        }
+        // up
+        if (key = 131) {
+            let v_y = v_y - 4;
+        }
+        // right
+        if (key = 132) {
+            let v_x = v_x + 4;
+        }
+        return;
+    }
+
+    method void move() {
+
+
+        // do clear();
+
+        // new position
+        let x = x + v_x;
+        let y = y + v_y;
+
+        if ((x > 0) & (x < x_max) & (y > 0) & (y < y_max)){
+            let v_y = v_y + g;
+            do draw();
+            return;
+        }
+
+        // left wall collision
+        if (x = 0) {
+            let v_x = v_x + 1;
+            let v_x = -v_x;
+
+            let v_y = v_y + g;
+            do draw();
+            return;
+        }
+        if (x < 0) {
+            let v_x = v_x + 1;
+            let v_x = -v_x;
+            let x = -x;
+
+            let v_y = v_y + g;
+            do draw();
+            return;
+        }
+
+        // right wall collision
+        if (x = x_max) {
+            let v_x = v_x - 1;
+            let v_x = -v_x;
+
+            let v_y = v_y + g;
+            do draw();
+            return;
+        }
+        if (x > x_max) {
+            let v_x = v_x - 1;
+            let v_x = -v_x;
+            let x = x_max + x_max - x;
+
+            let v_y = v_y + g;
+            do draw();
+            return;
+        }
+
+        // ceiling collision
+        if (y = 0) {
+            let v_y = -v_y;
+
+            let v_y = v_y + g;
+            do draw();
+            return;
+        }
+        if (y < 0) {
+            let v_y = -v_y;
+            let y = -y;
+
+            let v_y = v_y + g;
+            do draw();
+            return;
+        }
+
+        // floor collsion
+        if (y = y_max) {
+            let v_x = v_x - 1;
+            let v_y = Math.max(6, v_y);
+            let v_y = -v_y;
+            if (v_x > 0) {
+                let v_x = v_x - 1;
+            }
+            if (v_x < 0) {
+                let v_x = v_x + 1;
+            }
+
+            let v_y = v_y + g;
+            do draw();
+            return;
+
+        }
+        if (y > y_max) {
+            let y = y_max;
+            let v_x = v_x - 1;
+            let v_y = Math.max(6, v_y);
+            let v_y = -v_y;
+            if (v_x > 0) {
+                let v_x = v_x - 1;
+            }
+            if (v_x < 0) {
+                let v_x = v_x + 1;
+            }
+
+            let v_y = v_y + g;
+            do draw();
+            return;
+        }
+
+        let v_y = v_y + g;
+        do draw();
+        return;
+    }
+}

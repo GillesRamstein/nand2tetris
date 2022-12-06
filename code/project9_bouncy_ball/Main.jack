@@ -1,0 +1,28 @@
+class Main {
+    function void main() {
+
+        var Ball ball;
+        var int tick;
+        var int key;
+
+        let ball = Ball.new();
+        let tick = 0;
+        let key = 0;
+
+        do ball.draw();
+
+        while (true) {
+            let tick = tick + 1;
+            if (tick < 10) {
+                do Sys.wait(10);
+                let key = Keyboard.keyPressed();
+            } else {
+                do ball.getInput(key);
+                do ball.move();
+                let key = 0;
+                let tick = 0;
+            }
+        }
+        return;
+    }
+}

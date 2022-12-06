@@ -1,0 +1,24 @@
+class Library {
+
+    function void continue() {
+        var int key, cnt;
+        let cnt = 0;
+        while (cnt < 10000) {
+            let key = Keyboard.keyPressed();
+            do Sys.wait(166);
+            if (key=32) {
+                return;
+            }
+        }
+        return;
+    }
+
+    function void debug(int row, int col, str value) {
+        do Output.moveCursor(row, col);
+        do Output.printString("  ");
+        do Output.moveCursor(row, col);
+        do Output.printInt(value);
+        return;
+    }
+
+}

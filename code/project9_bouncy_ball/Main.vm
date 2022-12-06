@@ -1,0 +1,48 @@
+function Main.main 3
+call Ball.new 0
+pop local 0
+push constant 0
+pop local 1
+push constant 0
+pop local 2
+push local 0
+call Ball.draw 1
+pop temp 0
+label WHILE_EXP0
+push constant 0
+not
+not
+if-goto WHILE_END0
+push local 1
+push constant 1
+add
+pop local 1
+push local 1
+push constant 10
+lt
+if-goto IF_TRUE0
+goto IF_FALSE0
+label IF_TRUE0
+push constant 10
+call Sys.wait 1
+pop temp 0
+call Keyboard.keyPressed 0
+pop local 2
+goto IF_END0
+label IF_FALSE0
+push local 0
+push local 2
+call Ball.getInput 2
+pop temp 0
+push local 0
+call Ball.move 1
+pop temp 0
+push constant 0
+pop local 2
+push constant 0
+pop local 1
+label IF_END0
+goto WHILE_EXP0
+label WHILE_END0
+push constant 0
+return
