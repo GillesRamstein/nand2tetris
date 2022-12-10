@@ -7,25 +7,9 @@ operators = [f"<symbol> {w} </symbol>" for w in ('+','-','*','/','&amp;','|','&l
 unary_symbols = [f"<symbol> {w} </symbol>" for w in ("-", "~")]
 
 
-def analyze(tokens):
+def engine(tokens):
     tokens = deque(tokens)
     return block__class(tokens)
-
-
-def __keyword(tokens):
-    return tokens.popleft()
-
-
-def __identifier(tokens):
-    return tokens.popleft()
-
-
-def __type(tokens, incl_void=False):
-    # void = ["void"] if incl_void else []
-    # types = [*void,"int", "char","boolean",*class_names]
-    # if tokens[0] not in types:
-    #     raise ValueError(f"Expected Type: {types}")
-    return tokens.popleft()
 
 
 def block__class(tokens):
@@ -82,7 +66,7 @@ def block__sub_dec(tokens):
         raise ValueError
     xml.append(__keyword(tokens))
 
-    xml.append(__type(tokens, True))
+    xml.append(__type(tokens))
     xml.append(__identifier(tokens))
 
     if not tokens[0] == "<symbol> ( </symbol>":
@@ -108,11 +92,11 @@ def block__param_list(tokens):
         xml.append("</parameterList>")
         return xml
 
-    xml.append(__type(tokens, True))
+    xml.append(__type(tokens))
     xml.append(__identifier(tokens))
     while tokens[0] == "<symbol> , </symbol>":
         xml.append(tokens.popleft())
-        xml.append(__type(tokens, True))
+        xml.append(__type(tokens))
         xml.append(__identifier(tokens))
 
     xml.append("</parameterList>")
@@ -361,6 +345,18 @@ def block__expr_list(tokens):
 
     xml.append("</expressionList>")
     return xml
+
+
+def __keyword(tokens):
+    return tokens.popleft()
+
+
+def __identifier(tokens):
+    return tokens.popleft()
+
+
+def __type(tokens):
+    return tokens.popleft()
 
 
 def __sub_call(tokens):
