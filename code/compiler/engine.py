@@ -1,10 +1,59 @@
-from collections import deque
+from copy import copy
+from collections import defaultdict, deque
 
 
-cls_var_kws = [f"<keyword> {w} </keyword>" for w in ("static", "field")]
-cls_sub_kws = [f"<keyword> {w} </keyword>" for w in ("constructor", "function", "method")]
-operators = [f"<symbol> {w} </symbol>" for w in ('+','-','*','/','&amp;','|','&lt;','&gt;','=')]
-unary_symbols = [f"<symbol> {w} </symbol>" for w in ("-", "~")]
+cls_var_kws = [f"{w}" for w in ("static", "field")]
+cls_sub_kws = [f"{w}" for w in ("constructor", "function", "method")]
+operators = [f"{w}" for w in ("+", "-", "*", "/", "&", "|", "<", ">", "=")]
+unary_symbols = [f"{w}" for w in ("-", "~")]
+
+
+cnt_while = defaultdict(int)
+cnt_if = defaultdict(int)
+
+
+def print_vm(vm):
+    if False:
+        print(vm)
+
+
+class SymbolTable:
+    def __init__(self, *kinds, cls_name=None, sub_name=None):
+        self.cls_name = cls_name
+        self.sub_name = sub_name
+        self.table = {}
+        self.cnt_kind = {k: 0 for k in kinds}
+
+    def __contains__(self, name):
+        return name in self.table
+
+    def add(self, name, type, kind):
+        self.table[name] = (type, kind, self.cnt_kind[kind])
+        self.cnt_kind[kind] += 1
+
+    def type_of(self, name):
+        return self.table[name][0]
+
+    def kind_of(self, name):
+        return self.table[name][1]
+
+    def index_of(self, name):
+        return self.table[name][2]
+
+    def var_count(self, kind):
+        if kind == "argument":
+            return self.cnt_kind[kind] - 1
+        return self.cnt_kind[kind]
+
+
+def pop_or_raise(tokens, val):
+    if isinstance(val, list):
+        if tokens[0] not in val:
+            raise ValueError
+    else:
+        if not tokens[0] == val:
+            raise ValueError
+    return tokens.popleft()
 
 
 def engine(tokens):
@@ -14,337 +63,368 @@ def engine(tokens):
 
 def block__class(tokens):
     """
-    'class' className '{' classVarDec* subroutineDec* '}' 
+    'class' className '{' classVarDec* subroutineDec* '}'
     """
-    xml = ["<class>"]
-    xml.append(__keyword(tokens))
-    xml.append(__identifier(tokens))
+    vm = []
+    tokens.popleft()  # keyword class
+    cls_name = tokens.popleft()  # identifier class_name
 
-    if not tokens[0] == "<symbol> { </symbol>":
-        raise ValueError
-    xml.append(tokens.popleft())
+    cls_symbols = SymbolTable("static", "field", cls_name=cls_name)
+
+    pop_or_raise(tokens, "{")
 
     while tokens[0] in cls_var_kws:
-        xml.extend(block__class_var_dec(tokens))
+        vm.extend(block__class_var_dec(tokens))
 
     while tokens[0] in cls_sub_kws:
-        xml.extend(block__sub_dec(tokens))
+        vm.extend(block__sub_dec(tokens, cls_symbols))
 
-    if not tokens[0] == "<symbol> } </symbol>":
-        raise ValueError
-    xml.append(tokens.popleft())
-
-    xml.append("</class>")
-    return xml
+    pop_or_raise(tokens, "}")
+    print_vm(vm)
+    return vm
 
 
 def block__class_var_dec(tokens):
-    xml = ["<classVarDec>"]
+    vm = []
+    pop_or_raise(tokens, cls_var_kws)
 
-    if not tokens[0] in cls_var_kws:
-        raise ValueError
-    xml.append(__keyword(tokens))
+    vm.append(__type(tokens))
+    vm.append(__identifier(tokens))
+    while tokens[0] == ",":
+        vm.append(tokens.popleft())
+        vm.append(__identifier(tokens))
 
-    xml.append(__type(tokens))
-    xml.append(__identifier(tokens))
-    while tokens[0] == "<symbol> , </symbol>":
-        xml.append(tokens.popleft())
-        xml.append(__identifier(tokens))
-
-    if not tokens[0] == "<symbol> ; </symbol>":
-        raise ValueError
-    xml.append(tokens.popleft())
-
-    xml.append("</classVarDec>")
-    return xml
+    pop_or_raise(tokens, ";")
+    print_vm(vm)
+    return vm
 
 
-def block__sub_dec(tokens):
-    xml = ["<subroutineDec>"]
+def block__sub_dec(tokens, cls_symbols: SymbolTable):
+    vm = []
+    sub_kind = pop_or_raise(tokens, cls_sub_kws)
+    sub_type = tokens.popleft()
+    sub_name = tokens.popleft()
 
-    if not tokens[0] in cls_sub_kws:
-        raise ValueError
-    xml.append(__keyword(tokens))
+    sub_symbols: SymbolTable = SymbolTable(
+        "argument",
+        "local",
+        cls_name=cls_symbols.cls_name,
+        sub_name=sub_name,
+    )
+    if sub_kind == "method":
+        sub_symbols.add("this", "argument")
 
-    xml.append(__type(tokens))
-    xml.append(__identifier(tokens))
+    pop_or_raise(tokens, "(")
+    param_list = block__param_list(tokens, sub_symbols)
+    pop_or_raise(tokens, ")")
+    sub_body = block__sub_body(tokens, sub_symbols)
 
-    if not tokens[0] == "<symbol> ( </symbol>":
-        raise ValueError
-    xml.append(tokens.popleft())
+    n_locals = sub_symbols.var_count("local")
+    vm.append(
+        f"function {cls_symbols.cls_name}.{sub_name} {n_locals}"
+    )
 
-    xml.extend(block__param_list(tokens))
+    if sub_kind == "constructor":
+        n_args = sub_symbols.var_count("local")
 
-    if not tokens[0] == "<symbol> ) </symbol>":
-        raise ValueError
-    xml.append(tokens.popleft())
+        ## allocate memory:
+        # push constant n_args  // number of words to allocate on heap
+        # call Memory.alloc 1
 
-    xml.extend(block__sub_body(tokens))
+        ## init field vars
+        # pop pointer 0  // set THIS to object base address
+        # for i in range(len(n_args)):
+        #    push argument i
+        #    push this i
 
-    xml.append("</subroutineDec>")
-    return xml
+        ## do stuff with static var
+        # push/pop static 0
 
+        ## return this
+        # push pointer 0
+        pass
 
-def block__param_list(tokens):
-    xml = ["<parameterList>"]
+    if sub_kind == "function":
+        vm.extend(param_list)
+        vm.extend(sub_body)
 
-    if tokens[0] == "<symbol> ) </symbol>":
-        xml.append("</parameterList>")
-        return xml
+    if sub_kind == "method":
+        vm.append("push argument 0")
+        vm.append("pop pointer 0")
+        pass
 
-    xml.append(__type(tokens))
-    xml.append(__identifier(tokens))
-    while tokens[0] == "<symbol> , </symbol>":
-        xml.append(tokens.popleft())
-        xml.append(__type(tokens))
-        xml.append(__identifier(tokens))
+    if sub_type == "void":
+        vm.insert(-1, "push constant 0")
 
-    xml.append("</parameterList>")
-    return xml
+    vm.append("")
 
-
-def block__sub_body(tokens):
-    xml = ["<subroutineBody>"]
-
-    if not tokens[0] == "<symbol> { </symbol>":
-        raise ValueError
-    xml.append(tokens.popleft())
-
-    while tokens[0] == "<keyword> var </keyword>":
-        xml.extend(block__var_dec(tokens))
-    xml.extend(block__statements(tokens))
-
-    if not tokens[0] == "<symbol> } </symbol>":
-        raise ValueError
-    xml.append(tokens.popleft())
-
-    xml.append("</subroutineBody>")
-    return xml
-
-
-def block__var_dec(tokens):
-    xml = ["<varDec>"]
-    xml.append(__keyword(tokens))
-
-    xml.append(__type(tokens))
-    xml.append(__identifier(tokens))
-    while tokens[0] == "<symbol> , </symbol>":
-        xml.append(tokens.popleft())
-        xml.append(__identifier(tokens))
-
-    if not tokens[0] == "<symbol> ; </symbol>":
-        raise ValueError
-    xml.append(tokens.popleft())
-
-    xml.append("</varDec>")
-    return xml
+    print_vm(vm)
+    print(sub_symbols.table)
+    return vm
 
 
-def block__statements(tokens):
-    xml = ["<statements>"]
+def block__param_list(tokens, sub_symbols: SymbolTable):
+    if tokens[0] == ")":
+        return []
+
+    vm = []
+    var_type = tokens.popleft()  # keyword var_type
+    var_name = tokens.popleft()  # identifier var_name
+    sub_symbols.add(var_name, var_type, "argument")
+    while tokens[0] == ",":
+        tokens.popleft()  # symbol ,
+        var_type = tokens.popleft()  # keyword var_type
+        var_name = tokens.popleft()  # identifier var_name
+        sub_symbols.add(var_name, var_type, "argument")
+
+    print_vm(vm)
+    return vm
+
+
+def block__sub_body(tokens, sub_symbols: SymbolTable):
+    vm = []
+    pop_or_raise(tokens, "{")
+
+    while tokens[0] == "var":
+        vm.extend(block__var_dec(tokens, sub_symbols))
+    vm.extend(block__statements(tokens, sub_symbols))
+
+    pop_or_raise(tokens, "}")
+    print_vm(vm)
+    return vm
+
+
+def block__var_dec(tokens, sub_symbols: SymbolTable):
+    vm = []
+    tokens.popleft()  # keyword var
+
+    var_type = tokens.popleft()  # keyword var_type
+    var_name = tokens.popleft()  # identifier var_name
+    sub_symbols.add(var_name, var_type, "local")
+    while tokens[0] == ",":
+        tokens.popleft()  # symbol ,
+        var_name = tokens.popleft()  # identifier var_name
+        sub_symbols.add(var_name, var_type, "local")
+
+    pop_or_raise(tokens, ";")
+    print_vm(vm)
+    return vm
+
+
+def block__statements(tokens, sub_symbols: SymbolTable):
+    vm = []
     while True:
         match tokens[0]:
-            case "<keyword> while </keyword>":
-                xml.extend(block__while(tokens))
-            case "<keyword> if </keyword>":
-                xml.extend(block__if(tokens))
-            case "<keyword> return </keyword>":
-                xml.extend(block__return(tokens))
-            case "<keyword> let </keyword>":
-                xml.extend(block__let(tokens))
-            case "<keyword> do </keyword>":
-                xml.extend(block__do(tokens))
+            case "while":
+                vm.extend(block__while(tokens, sub_symbols))
+            case "if":
+                vm.extend(block__if(tokens, sub_symbols))
+            case "return":
+                vm.extend(block__return(tokens, sub_symbols))
+            case "let":
+                vm.extend(block__let(tokens, sub_symbols))
+            case "do":
+                vm.extend(block__do(tokens, sub_symbols))
             case _:
                 break
-    xml.append("</statements>")
-    return xml
+    print_vm(vm)
+    return vm
 
 
-def block__while(tokens):
-    xml = ["<whileStatement>"]
-    xml.append(__keyword(tokens))
+def block__while(tokens, sub_symbols: SymbolTable):
+    name = f"{sub_symbols.cls_name}.{sub_symbols.sub_name}"
+    cnt_while[name] += 1
+    cnt = copy(cnt_while[name])
 
-    if not tokens[0] == "<symbol> ( </symbol>":
-        raise ValueError
-    xml.append(tokens.popleft())
+    pop_or_raise(tokens, "while")
+    vm = [f"label {name}.WHILE_START.{cnt}"]
 
-    xml.extend(block__expression(tokens))
+    pop_or_raise(tokens, "(")
+    vm.extend(block__expression(tokens, sub_symbols))
+    pop_or_raise(tokens, ")")
 
-    if not tokens[0] == "<symbol> ) </symbol>":
-        raise ValueError
-    xml.append(tokens.popleft())
+    # stack -1 -> True, stack 0 -> False
+    vm.append("not")
+    vm.append(f"if-goto {name}.WHILE_EXIT.{cnt}")
 
-    if not tokens[0] == "<symbol> { </symbol>":
-        raise ValueError
-    xml.append(tokens.popleft())
+    pop_or_raise(tokens, "{")
+    vm.extend(block__statements(tokens, sub_symbols))
+    pop_or_raise(tokens, "}")
+    
+    vm.append(f"goto {name}.WHILE_START.{cnt}")
+    vm.append(f"label {name}.WHILE_EXIT.{cnt}")
 
-    xml.extend(block__statements(tokens))
-
-    if not tokens[0] == "<symbol> } </symbol>":
-        raise ValueError
-    xml.append(tokens.popleft())
-
-    xml.append("</whileStatement>")
-    return xml
-
-
-def block__if(tokens):
-    xml = ["<ifStatement>"]
-    xml.append(__keyword(tokens))
-
-    if not tokens[0] == "<symbol> ( </symbol>":
-        raise ValueError
-    xml.append(tokens.popleft())
-
-    xml.extend(block__expression(tokens))
-
-    if not tokens[0] == "<symbol> ) </symbol>":
-        raise ValueError
-    xml.append(tokens.popleft())
-
-    if not tokens[0] == "<symbol> { </symbol>":
-        raise ValueError
-    xml.append(tokens.popleft())
-
-    xml.extend(block__statements(tokens))
-
-    if not tokens[0] == "<symbol> } </symbol>":
-        raise ValueError
-    xml.append(tokens.popleft())
-
-    if tokens[0] == "<keyword> else </keyword>":
-        xml.append(tokens.popleft())
-
-        if not tokens[0] == "<symbol> { </symbol>":
-            raise ValueError
-        xml.append(tokens.popleft())
-
-        xml.extend(block__statements(tokens))
-
-        if not tokens[0] == "<symbol> } </symbol>":
-            raise ValueError
-        xml.append(tokens.popleft())
-
-    xml.append("</ifStatement>")
-    return xml
+    print_vm(vm)
+    return vm
 
 
-def block__return(tokens):
-    xml = ["<returnStatement>"]
-    xml.append(__keyword(tokens))
+def block__if(tokens, sub_symbols: SymbolTable):
+    name = f"{sub_symbols.cls_name}.{sub_symbols.sub_name}"
+    cnt_if[name] += 1
+    cnt = copy(cnt_if[name])
 
-    if tokens[0] != "<symbol> ; </symbol>":
-        xml.extend(block__expression(tokens))
+    pop_or_raise(tokens, "if")
 
-    if not tokens[0] == "<symbol> ; </symbol>":
-        raise ValueError
-    xml.append(tokens.popleft())
+    pop_or_raise(tokens, "(")
+    vm = block__expression(tokens, sub_symbols)
+    pop_or_raise(tokens, ")")
 
-    xml.append("</returnStatement>")
-    return xml
+    vm.append("not")
+    vm.append(f"if-goto {name}.IF_FALSE.{cnt_if[name]}")
 
+    pop_or_raise(tokens, "{")
+    vm.extend(block__statements(tokens, sub_symbols))
+    pop_or_raise(tokens, "}")
 
-def block__let(tokens):
-    xml = ["<letStatement>"]
-    xml.append(__keyword(tokens))
-    xml.append(__identifier(tokens))
+    vm.append(f"goto {name}.IF_END.{cnt}")
 
-    if tokens[0] == "<symbol> [ </symbol>":
-        xml.append(tokens.popleft())
-        xml.extend(block__expression(tokens))
-        if not tokens[0] == "<symbol> ] </symbol>":
-            raise ValueError
-        xml.append(tokens.popleft())
+    if tokens[0] == "else":
+        pop_or_raise(tokens, "else")
 
-    if not tokens[0] == "<symbol> = </symbol>":
-        raise ValueError
-    xml.append(tokens.popleft())
+        vm.append(f"label {name}.IF_FALSE.{cnt}")
 
-    xml.extend(block__expression(tokens))
+        pop_or_raise(tokens, "{")
+        vm.extend(block__statements(tokens, sub_symbols))
+        pop_or_raise(tokens, "}")
 
-    if not tokens[0] == "<symbol> ; </symbol>":
-        raise ValueError
-    xml.append(tokens.popleft())
+    vm.append(f"label {name}.IF_END.{cnt}")
 
-    xml.append("</letStatement>")
-    return xml
+    print_vm(vm)
+    return vm
 
 
-def block__do(tokens):
-    xml = ["<doStatement>"]
-    xml.append(__keyword(tokens))
+def block__return(tokens, sub_symbols: SymbolTable):
+    vm = []
+    pop_or_raise(tokens, "return")
 
-    xml.extend(__sub_call(tokens))
+    if tokens[0] != ";":
+        vm.extend(block__expression(tokens, sub_symbols))
+    vm.append("return")
 
-    if not tokens[0] == "<symbol> ; </symbol>":
-        raise ValueError
-    xml.append(tokens.popleft())
-
-    xml.append("</doStatement>")
-    return xml
+    pop_or_raise(tokens, ";")
+    print_vm(vm)
+    return vm
 
 
-def block__expression(tokens):
-    xml = ["<expression>"]
+def block__let(tokens, sub_symbols: SymbolTable):
+    vm = []
+    tokens.popleft()  # keyword
+    var_name = tokens.popleft()
 
-    xml.extend(block__term(tokens))
+    if tokens[0] == "[":
+        pop_or_raise(tokens, "[")
+        vm.extend(block__expression(tokens, sub_symbols))
+        pop_or_raise(tokens, "]")
 
+    pop_or_raise(tokens, "=")
+    vm.extend(block__expression(tokens, sub_symbols))
+
+    kind = sub_symbols.kind_of(var_name)
+    index = sub_symbols.index_of(var_name)
+    vm.append(f"pop {kind} {index}")
+
+    pop_or_raise(tokens, ";")
+    return vm
+
+
+def block__do(tokens, sub_symbols: SymbolTable):
+    pop_or_raise(tokens, "do")
+    vm = __sub_call(tokens, sub_symbols)
+    pop_or_raise(tokens, ";")
+
+    vm.append("pop temp 0")  # pop void return value
+
+    print_vm(vm)
+    return vm
+
+
+def block__expression(tokens, sub_symbols: SymbolTable):
+
+
+    OP_MAP = {
+        "+": "add",
+        "-": "sub",
+        "*": "call Math.multiply 2",
+        "/": "call Math.divide 2",
+        ">": "gt",
+        "<": "lt",
+        "=": "eq",
+        "|": "or",
+        "&": "and",
+    }
+
+
+    vm = block__term(tokens, sub_symbols)
     while tokens[0] in operators:
-        xml.append(tokens.popleft())
-        xml.extend(block__term(tokens))
+        op = tokens.popleft()  # symbol operator
+        vm.extend(block__term(tokens, sub_symbols))
+        vm.append(OP_MAP[op])
 
-    xml.append("</expression>")
-    return xml
+    return vm
 
 
-def block__term(tokens):
-    xml = ["<term>"]
+def block__term(tokens, sub_symbols: SymbolTable):
+    vm = []
 
+    # negative and negation sign
     if tokens[0] in unary_symbols:
-        xml.append(tokens.popleft())
-        xml.extend(block__term(tokens))
+        op = pop_or_raise(tokens, unary_symbols)
+        vm.extend(block__term(tokens, sub_symbols))
+        vm.append({"-": "neg", "~": "not"}[op])
 
-    elif tokens[0] == "<symbol> ( </symbol>":
-        xml.append(tokens.popleft())
+    # nested expression
+    elif tokens[0] == "(":
+        tokens.popleft()  # symbol (
+        vm.extend(block__expression(tokens, sub_symbols))
+        pop_or_raise(tokens, ")")
 
-        xml.extend(block__expression(tokens))
+    # subroutine call
+    elif tokens[1] in [".", "("]:
+        vm.extend(__sub_call(tokens, sub_symbols))
 
-        if not tokens[0] == "<symbol> ) </symbol>":
-            raise ValueError
-        xml.append(tokens.popleft())
+    # array access
+    elif tokens[1] == ["["]:
+        vm.append(__identifier(tokens))
+        if tokens[0] == "[":
+            vm.append(tokens.popleft())
+            vm.extend(block__expression(tokens, sub_symbols))
+            vm.append(pop_or_raise(tokens, "]"))
 
-    elif tokens[1] in ["<symbol> . </symbol>", "<symbol> ( </symbol>"]:
-        xml.extend(__sub_call(tokens))
-
+    # str-/int-/keyword-constant, var_name
     else:
-        xml.append(__identifier(tokens))
-        if tokens[0] == "<symbol> [ </symbol>":
-            xml.append(tokens.popleft())
+        value = tokens.popleft()
+        if value in sub_symbols.table:
+            kind = sub_symbols.kind_of(value)
+            index = sub_symbols.index_of(value)
+            vm.append(f"push {kind} {index}")
+        elif value == "true":
+            vm.extend([f"push constant 1", "neg"])
+        elif value == "false":
+            vm.append(f"push constant 0")
+        elif value.isdecimal():
+            vm.append(f"push constant {value}")
+        else:
+            assert False, "Implement String Constants"
+            # vm.append(f"push constant {value}")
 
-            xml.extend(block__expression(tokens))
-
-            if not tokens[0] == "<symbol> ] </symbol>":
-                raise ValueError
-            xml.append(tokens.popleft())
-
-    xml.append("</term>")
-    return xml
+    print_vm(vm)
+    return vm
 
 
-def block__expr_list(tokens):
-    xml = ["<expressionList>"]
-    if tokens[0] == "<symbol> ) </symbol>":
-        xml.append("</expressionList>")
-        return xml
+def block__expr_list(tokens, sub_symbols: SymbolTable):
+    if tokens[0] == ")":
+        return [], 0
 
-    xml.extend(block__expression(tokens))
+    expression_count = 1
+    vm = block__expression(tokens, sub_symbols)
 
-    while tokens[0] == "<symbol> , </symbol>":
-        xml.append(tokens.popleft())
-        xml.extend(block__expression(tokens))
+    while tokens[0] == ",":
+        tokens.popleft()  # symbol ,
+        vm.extend(block__expression(tokens, sub_symbols))
+        expression_count += 1
 
-    xml.append("</expressionList>")
-    return xml
+    print_vm(vm)
+    return vm, expression_count
 
 
 def __keyword(tokens):
@@ -359,21 +439,29 @@ def __type(tokens):
     return tokens.popleft()
 
 
-def __sub_call(tokens):
-    xml = []
-    if tokens[1] == "<symbol> . </symbol>":
-        xml.append(__identifier(tokens))
-        xml.append(tokens.popleft())
+def __sub_call(tokens, sub_symbols: SymbolTable):
+    vm = []
+    if tokens[1] == ".":
+        class_or_var_name = tokens.popleft()  # identifier class_name
+        tokens.popleft()  # symbol .
+    else:
+        class_or_var_name = None
 
-    xml.append(__identifier(tokens))
+    sub_name = tokens.popleft()  # identifier sub_name
 
-    if not tokens[0] == "<symbol> ( </symbol>":
-        raise ValueError
-    xml.append(tokens.popleft())
+    pop_or_raise(tokens, "(")
+    expr_list, n_args = block__expr_list(tokens, sub_symbols)
+    vm.extend(expr_list)
+    pop_or_raise(tokens, ")")
 
-    xml.extend(block__expr_list(tokens))
+    if class_or_var_name:
+        vm.append(f"call {class_or_var_name}.{sub_name} {n_args}")
+    else:
+        vm.append(f"call {sub_name} {n_args}")
 
-    if not tokens[0] == "<symbol> ) </symbol>":
-        raise ValueError
-    xml.append(tokens.popleft())
-    return xml
+    # TODO: handle object address return value
+    if False:
+        vm.append("pop local <obj-var-name-idx>")
+
+    print_vm(vm)
+    return vm

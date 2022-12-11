@@ -1,10 +1,11 @@
 from argparse import ArgumentParser
 from pathlib import Path
 
-from in_out import read_jack_file, remove_comments, write_output
-from tokenizer import tokenize
 from engine import engine
+from in_out import read_jack_file, remove_comments, write_output
 from parser_xml import parse_to_xml
+from tokenizer import tokenize
+from tokenizer_xml import tokenize_xml
 
 
 def main(jack_files, write_xml):
@@ -16,14 +17,13 @@ def main(jack_files, write_xml):
 def compile_file(jack_file, write_xml):
     jack = read_jack_file(jack_file)
     jack_clean = remove_comments(jack)
-    tokens = tokenize(jack_clean)
 
     if write_xml:
-        xml = parse_to_xml(tokens)
+        xml = parse_to_xml(tokenize_xml(jack_clean, xml=True))
         write_output(xml, jack_file.with_suffix(".new.xml"))
 
-    vm = engine(tokens)
-    write_output(vm, jack_file.with_suffix(".new.vm"))
+    vm = engine(tokenize(jack_clean))
+    write_output(vm, jack_file.with_suffix(".vm"))
 
 
 if __name__ == "__main__":
