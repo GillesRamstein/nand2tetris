@@ -1,5 +1,6 @@
 from argparse import ArgumentParser
 from pathlib import Path
+from time import time
 
 from engine import engine
 from in_out import read_jack_file, remove_comments, write_output
@@ -10,8 +11,10 @@ from tokenizer_xml import tokenize_xml
 
 def main(jack_files, write_xml):
     for jack_file in jack_files:
+        start = time()
         print(f"Compiling {jack_file.name}")
         compile_file(jack_file, write_xml)
+        print(f"Done! ({round(time()-start, 3)}s)\n")
 
 
 def compile_file(jack_file, write_xml):
@@ -19,7 +22,7 @@ def compile_file(jack_file, write_xml):
     jack_clean = remove_comments(jack)
 
     if write_xml:
-        xml = parse_to_xml(tokenize_xml(jack_clean, xml=True))
+        xml = parse_to_xml(tokenize_xml(jack_clean))
         write_output(xml, jack_file.with_suffix(".new.xml"))
 
     vm = engine(tokenize(jack_clean))

@@ -1,0 +1,29 @@
+class Object {
+    field int x, y;
+
+    constructor Object new(int arg) {
+        let x = arg;
+        let y = add(1);
+        do print();
+        return this;
+    }
+
+    method void dispose() {
+        do Memory.deAlloc(this);
+        return;
+    }
+
+    method int add(int val) {
+        return x + val;
+    }
+
+    method void print() {
+        do Output.printInt(x);
+        do Output.println();
+        do Output.printInt(y);
+        do Output.println();
+        return;
+    }
+
+
+}

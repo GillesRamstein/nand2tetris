@@ -32,14 +32,14 @@ class SquareGame {
 
    /** Disposes this game. */
    method void dispose() {
-      do square.dispose();
+      do square.dispose();  // Square.dispose(square)
       do Memory.deAlloc(this);
       return;
    }
 
    /** Moves the square in the current direction. */
    method void moveSquare() {
-      if (direction = 1) { do square.moveUp(); }
+      if (direction = 1) { do square.moveUp(); }  // Square.moveUp(square)
       if (direction = 2) { do square.moveDown(); }
       if (direction = 3) { do square.moveLeft(); }
       if (direction = 4) { do square.moveRight(); }
@@ -57,7 +57,7 @@ class SquareGame {
          // waits for a key to be pressed
          while (key = 0) {
             let key = Keyboard.keyPressed();
-            do moveSquare();
+            do moveSquare();  // SquareGame.moveSquare(squareGame)
          }
          if (key = 81)  { let exit = true; }     // q key
          if (key = 90)  { do square.decSize(); } // z key

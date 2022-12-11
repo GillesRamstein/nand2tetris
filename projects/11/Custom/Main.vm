@@ -1,37 +1,19 @@
-function Main.main 0
-push constant 1
-neg
-not
-if-goto Main.main.IF_FALSE.1
-push constant 1
+function Main.main 2
+push constant 7
+call Object.new 1
+pop local 1
+push local 1  // pass object base address as argument 0
+push constant 8880
+call Object.add 2
+pop local 0
+push local 0
 call Output.printInt 1
 pop temp 0
 call Output.println 0
 pop temp 0
-goto Main.main.IF_END.1
-label Main.main.IF_FALSE.1
-push constant 0
-call Output.printInt 1
+push local 1  // pass object base address as argument 0
+call Object.print 1
 pop temp 0
-call Output.println 0
-pop temp 0
-label Main.main.IF_END.1
-push constant 0
-not
-if-goto Main.main.IF_FALSE.2
-push constant 00
-call Output.printInt 1
-pop temp 0
-call Output.println 0
-pop temp 0
-goto Main.main.IF_END.2
-label Main.main.IF_FALSE.2
-push constant 11
-call Output.printInt 1
-pop temp 0
-call Output.println 0
-pop temp 0
-label Main.main.IF_END.2
 push constant 0
 return
 

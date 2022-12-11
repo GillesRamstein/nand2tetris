@@ -1,20 +1,17 @@
 class Main {
 
     function void main() {
-        if (true) {
-            do Output.printInt(1);
-            do Output.println();
-        } else {
-            do Output.printInt(0);
-            do Output.println();
-        }
-        if (false) {
-            do Output.printInt(00);
-            do Output.println();
-        } else {
-            do Output.printInt(11);
-            do Output.println();
-        }
+
+        var int item;
+        var Object object;
+
+        let object = Object.new(7);
+        let item = object.add(8880);
+
+        do Output.printInt(item);
+        do Output.println();
+        do object.print();
+
         return;
     }
 }
