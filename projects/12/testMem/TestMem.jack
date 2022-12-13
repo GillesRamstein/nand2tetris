@@ -1,0 +1,52 @@
+class TestMem {
+
+    function void testMem() {
+        var int x,y;
+        do Output.printInt(Memory.peek(0));
+        do Output.println();
+
+        do Memory.poke(3000, 3000);
+        do Output.printInt(Memory.peek(3000));
+        do Output.println();
+
+        let x = Memory.alloc(5);
+        do Output.printInt(x);
+        do Output.println();
+        do Memory.deAlloc(x);
+
+        let y = Memory.alloc(7);
+        do Output.printInt(y);
+        do Output.println();
+        do Memory.deAlloc(y);
+
+        let x = Memory.alloc(5);
+        do Output.printInt(x);
+        do Output.println();
+        let y = Memory.alloc(7);
+        do Output.printInt(y);
+        do Output.println();
+        do Memory.deAlloc(y);
+        do Memory.deAlloc(x);
+
+        let x = Memory.alloc(5);
+        do Output.printInt(x);
+        do Output.println();
+        let y = Memory.alloc(7);
+        do Output.printInt(y);
+        do Output.println();
+        do Memory.deAlloc(x);
+        do Memory.deAlloc(y);
+
+        let x = Memory.alloc(5);
+        do Output.printInt(x);
+        do Output.println();
+        do Memory.deAlloc(x);
+
+        let y = Memory.alloc(7);
+        do Output.printInt(y);
+        do Output.println();
+        do Memory.deAlloc(y);
+
+    }
+
+}

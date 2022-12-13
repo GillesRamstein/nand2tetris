@@ -1,0 +1,4 @@
+function Main.main 0
+call TestMem.testMem 0
+push constant 0
+pop temp 0
