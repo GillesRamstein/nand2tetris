@@ -2,7 +2,7 @@ function Main.main 2
 push constant 7
 call Object.new 1
 pop local 1
-push local 1  // pass object base address as argument 0
+push local 1
 push constant 8880
 call Object.add 2
 pop local 0
@@ -11,9 +11,8 @@ call Output.printInt 1
 pop temp 0
 call Output.println 0
 pop temp 0
-push local 1  // pass object base address as argument 0
+push local 1
 call Object.print 1
 pop temp 0
 push constant 0
 return
-

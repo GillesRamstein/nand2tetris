@@ -652,13 +652,11 @@ call Output.println 0
 pop temp 0
 push constant 0
 return
-
 function Main.double 0
 push argument 0
 push constant 2
 call Math.multiply 2
 return
-
 function Main.fill 0
 label Main.fill.WHILE_START.1
 push argument 1
@@ -681,4 +679,3 @@ goto Main.fill.WHILE_START.1
 label Main.fill.WHILE_EXIT.1
 push constant 0
 return
-

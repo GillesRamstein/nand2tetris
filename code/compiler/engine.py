@@ -6,7 +6,7 @@ from symbol_table import SymbolTable
 
 cls_var_kws = [f"{w}" for w in ("static", "field")]
 cls_sub_kws = [f"{w}" for w in ("constructor", "function", "method")]
-unary_symbols = [f"{w}" for w in ("-", "~")]
+unary_sym_table = [f"{w}" for w in ("-", "~")]
 
 
 cnt_while = defaultdict(int)
@@ -18,9 +18,8 @@ def print_vm(vm):
         print(vm)
 
 
-def print_sym(tbl):
-    if False:
-        print(tbl)
+print_cls_sym_table = True
+print_sub_sym_table = True
 
 
 def pop_or_raise(tokens, val):
@@ -39,66 +38,60 @@ def engine(tokens):
 
 
 def block__class(tokens):
-    """
-    'class' className '{' classVarDec* subroutineDec* '}'
-    """
     vm = []
-    tokens.popleft()  # keyword class
+    pop_or_raise(tokens, "class")
     cls_name = tokens.popleft()  # identifier class_name
     pop_or_raise(tokens, "{")
 
-    cls_symbols = SymbolTable("static", "field", cls_name=cls_name)
+    sym_table = SymbolTable(cls_name=cls_name)
     while tokens[0] in cls_var_kws:
-        cls_symbols = block__class_var_dec(tokens, cls_symbols)
-    print_sym(cls_symbols)
+        sym_table = block__class_var_dec(tokens, sym_table)
+
+    if print_cls_sym_table:
+        sym_table.print_cls()
 
     while tokens[0] in cls_sub_kws:
-        vm.extend(block__sub_dec(tokens, cls_symbols))
+        vm.extend(block__sub_dec(tokens, sym_table))
 
     pop_or_raise(tokens, "}")
     print_vm(vm)
     return vm
 
 
-def block__class_var_dec(tokens, cls_symbols: SymbolTable):
+def block__class_var_dec(tokens, sym_table: SymbolTable):
     var_kind = pop_or_raise(tokens, cls_var_kws)
     var_type = tokens.popleft()
 
     var_name = tokens.popleft()
-    cls_symbols.add(var_name, var_type, var_kind)
+    sym_table.add(var_name, var_type, var_kind)
     while tokens[0] == ",":
         pop_or_raise(tokens, ",")
         var_name = tokens.popleft()
-        cls_symbols.add(var_name, var_type, var_kind)
+        sym_table.add(var_name, var_type, var_kind)
 
     pop_or_raise(tokens, ";")
-    return cls_symbols
+    return sym_table
 
 
-def block__sub_dec(tokens, cls_symbols: SymbolTable):
+def block__sub_dec(tokens, sym_table: SymbolTable):
     sub_kind = pop_or_raise(tokens, cls_sub_kws)
     sub_type = tokens.popleft()
     sub_name = tokens.popleft()
 
-    sub_symbols: SymbolTable = SymbolTable(
-        "argument",
-        "local",
-        cls_name=cls_symbols.cls_name,
-        sub_name=sub_name,
-    )
+    sym_table.reset_sub_table(sub_name)
     if sub_kind == "method":
-        sub_symbols.add("this", "int", "argument")
+        sym_table.add("this", "int", "argument")
 
     pop_or_raise(tokens, "(")
-    block__param_list(tokens, sub_symbols)
+    block__param_list(tokens, sym_table)
     pop_or_raise(tokens, ")")
-    sub_body = block__sub_body(tokens, cls_symbols, sub_symbols)
+    sub_body = block__sub_body(tokens, sym_table)
 
-    n_locals = sub_symbols.var_count("local")
-    vm = [f"function {cls_symbols.cls_name}.{sub_name} {n_locals}"]
+    n_locals = sym_table.var_count("var")
+    vm = [f"function {sym_table.cls_name}.{sub_name} {n_locals}"]
 
     if sub_kind == "constructor":
-        n_fields = cls_symbols.var_count("field")
+        n_fields = sym_table.var_count("field")
         # allocate memory:
         vm.append(f"push constant {n_fields}")  # number of words to allocate on heap
         vm.append("call Memory.alloc 1")
@@ -117,75 +110,76 @@ def block__sub_dec(tokens, cls_symbols: SymbolTable):
         vm.insert(-1, "push constant 0")
 
     print_vm(vm)
-    print_sym(sub_symbols)
+    if print_sub_sym_table:
+        sym_table.print_sub()
     return vm
 
 
-def block__param_list(tokens, sub_symbols: SymbolTable):
+def block__param_list(tokens, sym_table: SymbolTable):
     if tokens[0] == ")":
         return
 
     var_type = tokens.popleft()
     var_name = tokens.popleft()
-    sub_symbols.add(var_name, var_type, "argument")
+    sym_table.add(var_name, var_type, "argument")
     while tokens[0] == ",":
         pop_or_raise(tokens, ",")
         var_type = tokens.popleft()
         var_name = tokens.popleft()
-        sub_symbols.add(var_name, var_type, "argument")
+        sym_table.add(var_name, var_type, "argument")
     return
 
 
-def block__sub_body(tokens, cls_symbols: SymbolTable, sub_symbols: SymbolTable):
+def block__sub_body(tokens, sym_table: SymbolTable):
     vm = []
     pop_or_raise(tokens, "{")
 
     while tokens[0] == "var":
-        vm.extend(block__var_dec(tokens, sub_symbols))
-    vm.extend(block__statements(tokens, cls_symbols, sub_symbols))
+        vm.extend(block__var_dec(tokens, sym_table))
+    vm.extend(block__statements(tokens, sym_table))
 
     pop_or_raise(tokens, "}")
     print_vm(vm)
     return vm
 
 
-def block__var_dec(tokens, sub_symbols: SymbolTable):
-    tokens.popleft()
-
+def block__var_dec(tokens, sym_table: SymbolTable):
+    kind = pop_or_raise(tokens, "var")
     var_type = tokens.popleft()
     var_name = tokens.popleft()
-    sub_symbols.add(var_name, var_type, "local")
+    sym_table.add(var_name, var_type, kind)
+
     while tokens[0] == ",":
         pop_or_raise(tokens, ",")
         var_name = tokens.popleft()
-        sub_symbols.add(var_name, var_type, "local")
+        sym_table.add(var_name, var_type, kind)
 
     pop_or_raise(tokens, ";")
     return []
 
 
-def block__statements(tokens, cls_symbols: SymbolTable, sub_symbols: SymbolTable):
+def block__statements(tokens, sym_table: SymbolTable):
     vm = []
     while True:
         match tokens[0]:
             case "while":
-                vm.extend(block__while(tokens, cls_symbols, sub_symbols))
+                vm.extend(block__while(tokens, sym_table))
             case "if":
-                vm.extend(block__if(tokens, cls_symbols, sub_symbols))
+                vm.extend(block__if(tokens, sym_table))
             case "return":
-                vm.extend(block__return(tokens, cls_symbols, sub_symbols))
+                vm.extend(block__return(tokens, sym_table))
             case "let":
-                vm.extend(block__let(tokens, cls_symbols, sub_symbols))
+                vm.extend(block__let(tokens, sym_table))
             case "do":
-                vm.extend(block__do(tokens, cls_symbols, sub_symbols))
+                vm.extend(block__do(tokens, sym_table))
             case _:
                 break
     print_vm(vm)
     return vm
 
 
-def block__while(tokens, cls_symbols: SymbolTable, sub_symbols: SymbolTable):
-    name = f"{sub_symbols.cls_name}.{sub_symbols.sub_name}"
+def block__while(tokens, sym_table: SymbolTable):
+    name = f"{sym_table.cls_name}.{sym_table.sub_name}"
     cnt_while[name] += 1
     cnt = copy(cnt_while[name])
 
@@ -193,7 +187,7 @@ def block__while(tokens, cls_symbols: SymbolTable, sub_symbols: SymbolTable):
     vm = [f"label {name}.WHILE_START.{cnt}"]
 
     pop_or_raise(tokens, "(")
-    vm.extend(block__expression(tokens, cls_symbols, sub_symbols))
+    vm.extend(block__expression(tokens, sym_table))
     pop_or_raise(tokens, ")")
 
     # stack -1 -> True, stack 0 -> False
@@ -201,7 +195,7 @@ def block__while(tokens, cls_symbols: SymbolTable, sub_symbols: SymbolTable):
     vm.append(f"if-goto {name}.WHILE_EXIT.{cnt}")
 
     pop_or_raise(tokens, "{")
-    vm.extend(block__statements(tokens, cls_symbols, sub_symbols))
+    vm.extend(block__statements(tokens, sym_table))
     pop_or_raise(tokens, "}")
 
     vm.append(f"goto {name}.WHILE_START.{cnt}")
@@ -211,22 +205,22 @@ def block__while(tokens, cls_symbols: SymbolTable, sub_symbols: SymbolTable):
     return vm
 
 
-def block__if(tokens, cls_symbols: SymbolTable, sub_symbols: SymbolTable):
-    name = f"{sub_symbols.cls_name}.{sub_symbols.sub_name}"
+def block__if(tokens, sym_table: SymbolTable):
+    name = f"{sym_table.cls_name}.{sym_table.sub_name}"
     cnt_if[name] += 1
     cnt = copy(cnt_if[name])
 
     pop_or_raise(tokens, "if")
 
     pop_or_raise(tokens, "(")
-    vm = block__expression(tokens, cls_symbols, sub_symbols)
+    vm = block__expression(tokens, sym_table)
     pop_or_raise(tokens, ")")
 
     vm.append("not")
     vm.append(f"if-goto {name}.IF_FALSE.{cnt}")
 
     pop_or_raise(tokens, "{")
-    vm.extend(block__statements(tokens, cls_symbols, sub_symbols))
+    vm.extend(block__statements(tokens, sym_table))
     pop_or_raise(tokens, "}")
 
     if tokens[0] == "else":
@@ -234,7 +228,7 @@ def block__if(tokens, cls_symbols: SymbolTable, sub_symbols: SymbolTable):
         vm.append(f"label {name}.IF_FALSE.{cnt}")
         pop_or_raise(tokens, "else")
         pop_or_raise(tokens, "{")
-        vm.extend(block__statements(tokens, cls_symbols, sub_symbols))
+        vm.extend(block__statements(tokens, sym_table))
         pop_or_raise(tokens, "}")
         vm.append(f"label {name}.IF_END.{cnt}")
     else:
@@ -244,12 +238,12 @@ def block__if(tokens, cls_symbols: SymbolTable, sub_symbols: SymbolTable):
     return vm
 
 
-def block__return(tokens, cls_symbols: SymbolTable, sub_symbols: SymbolTable):
+def block__return(tokens, sym_table: SymbolTable):
     vm = []
     pop_or_raise(tokens, "return")
 
     if tokens[0] != ";":
-        vm.extend(block__expression(tokens, cls_symbols, sub_symbols))
+        vm.extend(block__expression(tokens, sym_table))
     vm.append("return")
 
     pop_or_raise(tokens, ";")
@@ -257,54 +251,42 @@ def block__return(tokens, cls_symbols: SymbolTable, sub_symbols: SymbolTable):
     return vm
 
 
-def block__let(tokens, cls_symbols: SymbolTable, sub_symbols: SymbolTable):
-    tokens.popleft()  # keyword
+def block__let(tokens, sym_table: SymbolTable):
+    pop_or_raise(tokens, "let")
+
     var_name = tokens.popleft()
-    array = None
+    kind = sym_table.kind_of(var_name)
+    index = sym_table.index_of(var_name)
+
+    if kind is None:
+        breakpoint()
+
+    # variable assignment
+    if tokens[0] != "[":
+        pop_or_raise(tokens, "=")
+        vm = block__expression(tokens, sym_table)  # value to assign
+        vm.append(f"pop {kind} {index}")  # assign value
 
     # array assigment
-    if tokens[0] == "[":
-        if var_name in sub_symbols:
-            kind = sub_symbols.kind_of(var_name)
-            index = sub_symbols.index_of(var_name)
-        if var_name in cls_symbols:
-            kind = cls_symbols.kind_of(var_name)
-            index = cls_symbols.index_of(var_name)
-        array = [f"push {kind} {index}"]
+    else:
+        resolve_array = [f"push {kind} {index}"]
         pop_or_raise(tokens, "[")
-        array.extend(block__expression(tokens, cls_symbols, sub_symbols))
+        resolve_array.extend(block__expression(tokens, sym_table))
         pop_or_raise(tokens, "]")
-        array.append("add")
-        array.append("pop pointer 1")
-
-    pop_or_raise(tokens, "=")
-    # value to assign
-    vm = block__expression(tokens, cls_symbols, sub_symbols)
-
-    if var_name in cls_symbols:
-        kind = cls_symbols.kind_of(var_name)
-        index = cls_symbols.index_of(var_name)
-        kind = "this" if kind == "field" else kind
-
-    if var_name in sub_symbols:
-        kind = sub_symbols.kind_of(var_name)
-        index = sub_symbols.index_of(var_name)
-
-    if array:
-        kind = "that"
-        index = 0
-        vm.extend(array)
-
-    # assign value
-    vm.append(f"pop {kind} {index}")
+        resolve_array.append("add")
+        resolve_array.append("pop pointer 1")
+        pop_or_raise(tokens, "=")
+        vm = block__expression(tokens, sym_table)  # value to assign
+        vm.extend(resolve_array)
+        vm.append(f"pop that 0")  # assign value
 
     pop_or_raise(tokens, ";")
     return vm
 
 
-def block__do(tokens, cls_symbols: SymbolTable, sub_symbols: SymbolTable):
+def block__do(tokens, sym_table: SymbolTable):
     pop_or_raise(tokens, "do")
-    vm = __sub_call(tokens, cls_symbols, sub_symbols)
+    vm = __sub_call(tokens, sym_table)
     pop_or_raise(tokens, ";")
 
     vm.append("pop temp 0")  # pop void return value
@@ -313,7 +295,7 @@ def block__do(tokens, cls_symbols: SymbolTable, sub_symbols: SymbolTable):
     return vm
 
 
-def block__expression(tokens, cls_symbols: SymbolTable, sub_symbols: SymbolTable):
+def block__expression(tokens, sym_table: SymbolTable):
     OP_MAP = {
         "+": "add",
         "-": "sub",
@@ -326,72 +308,74 @@ def block__expression(tokens, cls_symbols: SymbolTable, sub_symbols: SymbolTable
         "&": "and",
     }
 
-    vm = block__term(tokens, cls_symbols, sub_symbols)
+    vm = block__term(tokens, sym_table)
     while tokens[0] in OP_MAP:
         op = tokens.popleft()  # symbol operator
-        vm.extend(block__term(tokens, cls_symbols, sub_symbols))
+        vm.extend(block__term(tokens, sym_table))
         vm.append(OP_MAP[op])
 
     return vm
 
 
-def block__term(tokens, cls_symbols: SymbolTable, sub_symbols: SymbolTable):
+def block__term(tokens, sym_table: SymbolTable):
     vm = []
-    # negative and negation sign
-    if tokens[0] in unary_symbols:
-        op = pop_or_raise(tokens, unary_symbols)
-        vm.extend(block__term(tokens, cls_symbols, sub_symbols))
+
+    # negative or negation sign
+    if tokens[0] in unary_sym_table:
+        op = pop_or_raise(tokens, unary_sym_table)
+        vm.extend(block__term(tokens, sym_table))
         vm.append({"-": "neg", "~": "not"}[op])
 
     # nested expression
     elif tokens[0] == "(":
         tokens.popleft()  # symbol (
-        vm.extend(block__expression(tokens, cls_symbols, sub_symbols))
+        vm.extend(block__expression(tokens, sym_table))
         pop_or_raise(tokens, ")")
 
     # subroutine call
     elif tokens[1] in [".", "("]:
-        vm.extend(__sub_call(tokens, cls_symbols, sub_symbols))
+        vm.extend(__sub_call(tokens, sym_table))
 
     # array access
     elif tokens[1] == "[":
         arr_name = tokens.popleft()
-        if arr_name in sub_symbols:
-            kind = sub_symbols.kind_of(arr_name)
-            index = sub_symbols.index_of(arr_name)
-        if arr_name in cls_symbols:
-            kind = cls_symbols.kind_of(arr_name)
-            index = cls_symbols.index_of(arr_name)
+        kind = sym_table.kind_of(arr_name)
+        index = sym_table.index_of(arr_name)
         vm.append(f"push {kind} {index}")
         pop_or_raise(tokens, "[")
-        vm.extend(block__expression(tokens, cls_symbols, sub_symbols))
+        vm.extend(block__expression(tokens, sym_table))
         pop_or_raise(tokens, "]")
         vm.append("add")
         vm.append("pop pointer 1")
         vm.append("push that 0")
 
-    # str-/int-/keyword-constant, var_name
+    # keywords, constants and variables
     else:
         value = tokens.popleft()
-        if value in cls_symbols.table:
-            kind = cls_symbols.kind_of(value)
-            index = cls_symbols.index_of(value)
-            kind = "this" if kind == "field" else kind
+
+        # variable name
+        if kind := sym_table.kind_of(value):
+            index = sym_table.index_of(value)
             vm.append(f"push {kind} {index}")
-        elif value in sub_symbols.table:
-            kind = sub_symbols.kind_of(value)
-            index = sub_symbols.index_of(value)
-            vm.append(f"push {kind} {index}")
+
+        # boolean true
         elif value == "true":
             vm.extend([f"push constant 1", "neg"])
+
+        # boolean false or null
         elif value in ["false", "null"]:
             vm.append(f"push constant 0")
+
+        # integer constant
         elif value.isdecimal():
             vm.append(f"push constant {value}")
+
+        # keyword 'this'
         elif value == "this":
             vm.append(f"push pointer 0")
+
+        # string constant
         else:
-            # string constant
             n = len(value)
             vm.append(f"push constant {n}")
             vm.append(f"call String.new 1")
@@ -402,69 +386,103 @@ def block__term(tokens, cls_symbols: SymbolTable, sub_symbols: SymbolTable):
     return vm
 
 
-def block__expr_list(tokens, cls_symbols: SymbolTable, sub_symbols: SymbolTable):
+def block__expr_list(tokens, sym_table: SymbolTable):
     if tokens[0] == ")":
         return [], 0
 
     expression_count = 1
-    vm = block__expression(tokens, cls_symbols, sub_symbols)
+    vm = block__expression(tokens, sym_table)
 
     while tokens[0] == ",":
         tokens.popleft()  # symbol ,
-        vm.extend(block__expression(tokens, cls_symbols, sub_symbols))
+        vm.extend(block__expression(tokens, sym_table))
         expression_count += 1
 
     print_vm(vm)
     return vm, expression_count
 
 
-def __sub_call(tokens, cls_symbols: SymbolTable, sub_symbols: SymbolTable):
+def __sub_call(tokens, sym_table: SymbolTable):
     vm = []
+
+    # Class.constructor
+    # Class.function
+    # object.method -> push object address
+    # function -> Class.function
+    # method -> ?
+
     if tokens[1] == ".":
         cls_or_var_name = tokens.popleft()  # identifier class_name
-        tokens.popleft()  # symbol .
+        pop_or_raise(tokens, ".")
     else:
         cls_or_var_name = None
 
     sub_name = tokens.popleft()  # identifier sub_name
 
     pop_or_raise(tokens, "(")
-    expr_list, n_args = block__expr_list(tokens, cls_symbols, sub_symbols)
+    expr_list, n_args = block__expr_list(tokens, sym_table)
     pop_or_raise(tokens, ")")
 
-    # Calling constructor or function of a class <cls_name> - no additional arguments needed
-    if cls_or_var_name and cls_or_var_name[0].isupper():
+    kind = sym_table.kind_of(cls_or_var_name)
+
+    # Function (or method??) call from local Class
+    #   let a = function(args);
+    if cls_or_var_name is None:
+        # Calling method of current class
+        vm.append("push pointer 0")
+        vm.extend(expr_list)
+        vm.append(f"call {sym_table.cls_name}.{sub_name} {n_args+1}")
+
+    # Constructor or Function call from another Class - no additional arguments needed
+    #   let a = Class.new(args)
+    #   let a = Class.function(args)
+    elif kind is None:
         vm.extend(expr_list)
         vm.append(f"call {cls_or_var_name}.{sub_name} {n_args}")
 
-    # Calling method on object <sub_var_name> - prepend object address to arguments
-    elif cls_or_var_name and cls_or_var_name in sub_symbols:
-        kind = sub_symbols.kind_of(cls_or_var_name)
-        type = sub_symbols.type_of(cls_or_var_name)
-        index = sub_symbols.index_of(cls_or_var_name)
+    # Method call on Object
+    #   do object.method(args)
+    else:
+        type = sym_table.type_of(cls_or_var_name)
+        index = sym_table.index_of(cls_or_var_name)
         vm.append(f"push {kind} {index}")
         vm.extend(expr_list)
         vm.append(f"call {type}.{sub_name} {n_args+1}")
 
-    # Calling method on object <cls_var_name> - prepend object address to arguments
-    elif cls_or_var_name and cls_or_var_name in cls_symbols:
-        kind = cls_symbols.kind_of(cls_or_var_name)
-        type = cls_symbols.type_of(cls_or_var_name)
-        index = cls_symbols.index_of(cls_or_var_name)
-        kind = "this" if kind == "field" else kind
-        vm.append(f"push {kind} {index}")  # pass object as argument 0
-        vm.extend(expr_list)
-        vm.append(f"call {type}.{sub_name} {n_args+1}")
 
-    # Calling method on current object
-    elif not cls_or_var_name:
-        # Calling method of current class
-        vm.append("push pointer 0")
-        vm.extend(expr_list)
-        vm.append(f"call {cls_symbols.cls_name}.{sub_name} {n_args+1}")
+    # # Calling constructor or function of a class <cls_name> - no additional arguments needed
+    # if cls_or_var_name and cls_or_var_name[0].isupper():
+    #     vm.extend(expr_list)
+    #     vm.append(f"call {cls_or_var_name}.{sub_name} {n_args}")
 
-    else:
-        assert False, "Unreachable"
+    # # Calling method on object <sub_var_name> - prepend object address to arguments
+    # elif cls_or_var_name and cls_or_var_name in sym_table:
+    #     kind = sym_table.kind_of(cls_or_var_name)
+    #     type = sym_table.type_of(cls_or_var_name)
+    #     index = sym_table.index_of(cls_or_var_name)
+    #     vm.append(f"push {kind} {index}")
+    #     vm.extend(expr_list)
+    #     vm.append(f"call {type}.{sub_name} {n_args+1}")
+
+    # # Calling method on object <cls_var_name> - prepend object address to arguments
+    # elif cls_or_var_name and cls_or_var_name in sym_table:
+    #     kind = sym_table.kind_of(cls_or_var_name)
+    #     type = sym_table.type_of(cls_or_var_name)
+    #     index = sym_table.index_of(cls_or_var_name)
+    #     kind = "this" if kind == "field" else kind
+    #     vm.append(f"push {kind} {index}")  # pass object as argument 0
+    #     vm.extend(expr_list)
+    #     vm.append(f"call {type}.{sub_name} {n_args+1}")
+
+    # # Calling method on current object
+    # elif not cls_or_var_name:
+    #     # Calling method of current class
+    #     vm.append("push pointer 0")
+    #     vm.extend(expr_list)
+    #     vm.append(f"call {sym_table.cls_name}.{sub_name} {n_args+1}")
+
+    # else:
+    #     assert False, "Unreachable"
 
     print_vm(vm)
     return vm
