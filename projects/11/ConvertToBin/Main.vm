@@ -18,7 +18,6 @@ call Main.convert 1
 pop temp 0
 push constant 0
 return
-
 function Main.convert 3
 push constant 1
 neg
@@ -72,7 +71,6 @@ goto Main.convert.WHILE_START.1
 label Main.convert.WHILE_EXIT.1
 push constant 0
 return
-
 function Main.nextMask 0
 push argument 0
 push constant 0
@@ -88,7 +86,6 @@ push constant 2
 call Math.multiply 2
 return
 label Main.nextMask.IF_END.1
-
 function Main.fillMemory 0
 label Main.fillMemory.WHILE_START.1
 push argument 1
@@ -112,4 +109,3 @@ goto Main.fillMemory.WHILE_START.1
 label Main.fillMemory.WHILE_EXIT.1
 push constant 0
 return
-

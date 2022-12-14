@@ -4,36 +4,33 @@ call Memory.alloc 1
 pop pointer 0
 push argument 0
 pop this 0
-push pointer 0  // pass object base address as argument 0
+push pointer 0
 push constant 1
 call Object.add 2
 pop this 1
-push pointer 0  // pass object base address as argument 0
+push pointer 0
 call Object.print 1
 pop temp 0
 push pointer 0
 return
-
 function Object.dispose 0
 push argument 0
-pop pointer 0  // set object base address
+pop pointer 0
 push argument 0
 call Memory.deAlloc 1
 pop temp 0
 push constant 0
 return
-
 function Object.add 0
 push argument 0
-pop pointer 0  // set object base address
+pop pointer 0
 push this 0
 push argument 1
 add
 return
-
 function Object.print 0
 push argument 0
-pop pointer 0  // set object base address
+pop pointer 0
 push this 0
 call Output.printInt 1
 pop temp 0
@@ -46,4 +43,3 @@ call Output.println 0
 pop temp 0
 push constant 0
 return
-
