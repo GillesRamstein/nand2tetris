@@ -1,9 +1,20 @@
 class Main {
     function void main() {
         var int x;
-        // let x = Math.divide(10, 2);
-        let x = Math.multiply(10, 2);
+        let x = Math.multiply(89, 89);
+        // let x = Math.sqrt(9);
         do Output.printInt(x);
+        do Output.println();
+
+        let x = Math.multiply(181, 181);
+        // let x = Math.sqrt(9);
+        do Output.printInt(x);
+        do Output.println();
+
+        let x = Math.sqrt(32767);
+        // let x = Math.sqrt(9);
+        do Output.printInt(x);
+        do Output.println();
 
         return;
     }

@@ -17,9 +17,8 @@ def print_vm(vm):
     if False:
         print(vm)
 
-
-print_cls_sym_table = True
-print_sub_sym_table = True
+print_cls_sym_table = False
+print_sub_sym_table = False
 
 
 def pop_or_raise(tokens, val):
@@ -258,9 +257,6 @@ def block__let(tokens, sym_table: SymbolTable):
     kind = sym_table.kind_of(var_name)
     index = sym_table.index_of(var_name)
 
-    if kind is None:
-        breakpoint()
-
     # variable assignment
     if tokens[0] != "[":
         pop_or_raise(tokens, "=")
@@ -405,12 +401,6 @@ def block__expr_list(tokens, sym_table: SymbolTable):
 def __sub_call(tokens, sym_table: SymbolTable):
     vm = []
 
-    # Class.constructor
-    # Class.function
-    # object.method -> push object address
-    # function -> Class.function
-    # method -> ?
-
     if tokens[1] == ".":
         cls_or_var_name = tokens.popleft()  # identifier class_name
         pop_or_raise(tokens, ".")
@@ -425,10 +415,11 @@ def __sub_call(tokens, sym_table: SymbolTable):
 
     kind = sym_table.kind_of(cls_or_var_name)
 
-    # Function (or method??) call from local Class
+    # Method call from local Class (Functions must always be prefixed witht the Class)
     #   let a = function(args);
     if cls_or_var_name is None:
         # Calling method of current class
+        breakpoint()
         vm.append("push pointer 0")
         vm.extend(expr_list)
         vm.append(f"call {sym_table.cls_name}.{sub_name} {n_args+1}")
@@ -448,41 +439,6 @@ def __sub_call(tokens, sym_table: SymbolTable):
         vm.append(f"push {kind} {index}")
         vm.extend(expr_list)
         vm.append(f"call {type}.{sub_name} {n_args+1}")
-
-
-    # # Calling constructor or function of a class <cls_name> - no additional arguments needed
-    # if cls_or_var_name and cls_or_var_name[0].isupper():
-    #     vm.extend(expr_list)
-    #     vm.append(f"call {cls_or_var_name}.{sub_name} {n_args}")
-
-    # # Calling method on object <sub_var_name> - prepend object address to arguments
-    # elif cls_or_var_name and cls_or_var_name in sym_table:
-    #     kind = sym_table.kind_of(cls_or_var_name)
-    #     type = sym_table.type_of(cls_or_var_name)
-    #     index = sym_table.index_of(cls_or_var_name)
-    #     vm.append(f"push {kind} {index}")
-    #     vm.extend(expr_list)
-    #     vm.append(f"call {type}.{sub_name} {n_args+1}")
-
-    # # Calling method on object <cls_var_name> - prepend object address to arguments
-    # elif cls_or_var_name and cls_or_var_name in sym_table:
-    #     kind = sym_table.kind_of(cls_or_var_name)
-    #     type = sym_table.type_of(cls_or_var_name)
-    #     index = sym_table.index_of(cls_or_var_name)
-    #     kind = "this" if kind == "field" else kind
-    #     vm.append(f"push {kind} {index}")  # pass object as argument 0
-    #     vm.extend(expr_list)
-    #     vm.append(f"call {type}.{sub_name} {n_args+1}")
-
-    # # Calling method on current object
-    # elif not cls_or_var_name:
-    #     # Calling method of current class
-    #     vm.append("push pointer 0")
-    #     vm.extend(expr_list)
-    #     vm.append(f"call {sym_table.cls_name}.{sub_name} {n_args+1}")
-
-    # else:
-    #     assert False, "Unreachable"
 
     print_vm(vm)
     return vm
