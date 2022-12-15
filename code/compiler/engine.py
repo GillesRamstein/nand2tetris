@@ -371,12 +371,16 @@ def block__term(tokens, sym_table: SymbolTable):
             vm.append(f"push pointer 0")
 
         # string constant
-        else:
+        elif value[0] == value[-1] == '"':
+            value = value.strip('"')
             n = len(value)
             vm.append(f"push constant {n}")
             vm.append(f"call String.new 1")
             for c in value:
                 vm.extend([f"push constant {ord(c)}", "call String.appendChar 2"])
+
+        else:
+            assert False, "unreachable"
 
     print_vm(vm)
     return vm
@@ -419,7 +423,6 @@ def __sub_call(tokens, sym_table: SymbolTable):
     #   let a = function(args);
     if cls_or_var_name is None:
         # Calling method of current class
-        breakpoint()
         vm.append("push pointer 0")
         vm.extend(expr_list)
         vm.append(f"call {sym_table.cls_name}.{sub_name} {n_args+1}")

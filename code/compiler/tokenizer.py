@@ -61,24 +61,24 @@ def split_str_constants(line, p):
         while '"' in line:
             s, line = line.split('"', 1)
             if cnt % 1 == 0:
-                tokens.append(s)
+                tokens.append('"' + s + '"')
             else:
                 tokens.extend(split_string(s, p))
             cnt += 1
         if cnt % 1 == 0:
-            tokens.append(line)
+            tokens.append('"' + line + '"')
         else:
             tokens.extend(split_string(line, p))
     else:
         while '"' in line:
             s, line = line.split('"', 1)
             if cnt % 2 == 0:
-                tokens.append(s)
+                tokens.append('"' + s + '"')
             else:
                 tokens.extend(split_string(s, p))
             cnt += 1
         if cnt % 2 == 0:
-            tokens.append(line)
+            tokens.append('"' + line + '"')
         else:
             tokens.extend(split_string(line, p))
     return tokens
