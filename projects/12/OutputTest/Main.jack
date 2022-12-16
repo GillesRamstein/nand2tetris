@@ -3,6 +3,10 @@
 // by Nisan and Schocken, MIT Press.
 // File name: projects/12/OutputTest/Main.jack
 
+
+// 16384 = 255  -> XXXX_XXXX_OOOO_OOOO 00000000 11111111
+// 16384 = -256 -> OOOO_OOOO_XXXX_XXXX 11111111 00000000
+
 /** Test program for the OS Output class. */
 class Main {
 
@@ -11,6 +15,8 @@ class Main {
     function void main() {
         var String s;
     
+        do Output.drawChar(77);
+
     	let s = String.new(1);
     	do s.appendChar(String.doubleQuote());
     
