@@ -1,0 +1,196 @@
+function Keyboard.init 0
+push constant 0
+return
+function Keyboard.keyPressed 1
+push constant 24576
+call Memory.peek 1
+pop local 0
+push local 0
+push constant 153
+lt
+not
+if-goto Keyboard.keyPressed.IF_FALSE.1
+push constant 24576
+call Memory.peek 1
+return
+label Keyboard.keyPressed.IF_FALSE.1
+push constant 0
+return
+function Keyboard.readChar 1
+label Keyboard.readChar.WHILE_START.1
+push constant 1
+neg
+not
+if-goto Keyboard.readChar.WHILE_EXIT.1
+call Keyboard.keyPressed 0
+pop local 0
+label Keyboard.readChar.WHILE_START.2
+push local 0
+push constant 0
+gt
+not
+if-goto Keyboard.readChar.WHILE_EXIT.2
+call Keyboard.keyPressed 0
+push constant 0
+eq
+not
+if-goto Keyboard.readChar.IF_FALSE.1
+push local 0
+call Output.printChar 1
+pop temp 0
+push local 0
+return
+label Keyboard.readChar.IF_FALSE.1
+goto Keyboard.readChar.WHILE_START.2
+label Keyboard.readChar.WHILE_EXIT.2
+goto Keyboard.readChar.WHILE_START.1
+label Keyboard.readChar.WHILE_EXIT.1
+function Keyboard.readLine 2
+push constant 64
+call String.new 1
+pop local 1
+push argument 0
+call Output.printString 1
+pop temp 0
+label Keyboard.readLine.WHILE_START.1
+push constant 1
+neg
+not
+if-goto Keyboard.readLine.WHILE_EXIT.1
+call Keyboard.keyPressed 0
+pop local 0
+label Keyboard.readLine.WHILE_START.2
+push local 0
+push constant 128
+eq
+not
+if-goto Keyboard.readLine.WHILE_EXIT.2
+call Keyboard.keyPressed 0
+push constant 0
+eq
+not
+if-goto Keyboard.readLine.IF_FALSE.1
+push local 1
+return
+label Keyboard.readLine.IF_FALSE.1
+goto Keyboard.readLine.WHILE_START.2
+label Keyboard.readLine.WHILE_EXIT.2
+label Keyboard.readLine.WHILE_START.3
+push local 0
+push constant 0
+gt
+not
+if-goto Keyboard.readLine.WHILE_EXIT.3
+call Keyboard.keyPressed 0
+push constant 0
+eq
+not
+if-goto Keyboard.readLine.IF_FALSE.2
+push local 0
+call Output.printChar 1
+pop temp 0
+push local 1
+push local 0
+call String.appendChar 2
+pop temp 0
+push constant 0
+pop local 0
+label Keyboard.readLine.IF_FALSE.2
+goto Keyboard.readLine.WHILE_START.3
+label Keyboard.readLine.WHILE_EXIT.3
+label Keyboard.readLine.WHILE_START.4
+push local 0
+push constant 129
+gt
+not
+if-goto Keyboard.readLine.WHILE_EXIT.4
+call Keyboard.keyPressed 0
+push constant 0
+eq
+not
+if-goto Keyboard.readLine.IF_FALSE.3
+push local 1
+call String.eraseLastChar 1
+pop temp 0
+push constant 0
+pop local 0
+label Keyboard.readLine.IF_FALSE.3
+goto Keyboard.readLine.WHILE_START.4
+label Keyboard.readLine.WHILE_EXIT.4
+goto Keyboard.readLine.WHILE_START.1
+label Keyboard.readLine.WHILE_EXIT.1
+function Keyboard.readInt 2
+push constant 64
+call String.new 1
+pop local 1
+push argument 0
+call Output.printString 1
+pop temp 0
+label Keyboard.readInt.WHILE_START.1
+push constant 1
+neg
+not
+if-goto Keyboard.readInt.WHILE_EXIT.1
+call Keyboard.keyPressed 0
+pop local 0
+label Keyboard.readInt.WHILE_START.2
+push local 0
+push constant 128
+eq
+not
+if-goto Keyboard.readInt.WHILE_EXIT.2
+call Keyboard.keyPressed 0
+push constant 0
+eq
+not
+if-goto Keyboard.readInt.IF_FALSE.1
+push local 1
+call String.intValue 1
+return
+label Keyboard.readInt.IF_FALSE.1
+goto Keyboard.readInt.WHILE_START.2
+label Keyboard.readInt.WHILE_EXIT.2
+label Keyboard.readInt.WHILE_START.3
+push local 0
+push constant 0
+gt
+not
+if-goto Keyboard.readInt.WHILE_EXIT.3
+call Keyboard.keyPressed 0
+push constant 0
+eq
+not
+if-goto Keyboard.readInt.IF_FALSE.2
+push local 0
+call Output.printChar 1
+pop temp 0
+push local 1
+push local 0
+call String.appendChar 2
+pop temp 0
+push constant 0
+pop local 0
+label Keyboard.readInt.IF_FALSE.2
+goto Keyboard.readInt.WHILE_START.3
+label Keyboard.readInt.WHILE_EXIT.3
+label Keyboard.readInt.WHILE_START.4
+push local 0
+push constant 129
+gt
+not
+if-goto Keyboard.readInt.WHILE_EXIT.4
+call Keyboard.keyPressed 0
+push constant 0
+eq
+not
+if-goto Keyboard.readInt.IF_FALSE.3
+push local 1
+call String.eraseLastChar 1
+pop temp 0
+push constant 0
+pop local 0
+label Keyboard.readInt.IF_FALSE.3
+goto Keyboard.readInt.WHILE_START.4
+label Keyboard.readInt.WHILE_EXIT.4
+goto Keyboard.readInt.WHILE_START.1
+label Keyboard.readInt.WHILE_EXIT.1
