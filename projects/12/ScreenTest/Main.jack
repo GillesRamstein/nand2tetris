@@ -8,7 +8,40 @@ class Main {
 
     /** Draws a sample pictue on the screen using lines and circles. */
     function void main() {
-    
+
+        // var int x, y;
+        // var boolean c;
+        // let x = 0;
+        // let y = 0;
+        // let c = true;
+        // while (y < 32) {
+        //     do Screen.setColor(c);
+        //     while (x < 256) {
+        //         do Screen.drawPixel(x, y);
+        //         let x = x + 1;
+        //         if (x = 127) {
+        //             if (c = true) {
+        //                 let c = false;
+        //             } else {
+        //                 let c = true;
+        //             }
+        //             do Screen.setColor(c);
+        //         }
+        //     }
+        //     let x = 0;
+        //     let y = y + 1;
+        // }
+
+        // do Screen.setColor(true);
+        // do Screen.drawHorzLine(3, 510-3, 200);
+        // do Screen.drawHorzLine(1, 510-1, 202);
+
+        // do Screen.drawLine(0,0,400,255);
+        // do Screen.drawLine(0,255,511,0);
+        // do Screen.drawLine(400,0,0,255);
+        // do Screen.drawLine(511,255,0,0);
+
+
         do Screen.drawLine(0,220,511,220);        // base line
         do Screen.drawRectangle(280,90,410,220);  // house
         
